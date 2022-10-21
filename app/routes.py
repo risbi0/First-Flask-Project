@@ -1,5 +1,6 @@
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, g
 from flask_login import current_user, login_user, logout_user, login_required
+from flask_babel import get_locale
 from app import app, db
 from app.forms import LoginForm, RegistrationForm, EditProfileForm, EmptyForm, PostForm, ResetPasswordRequestForm, ResetPasswordForm
 from app.models import User, Post
@@ -195,3 +196,7 @@ def reset_password(token):
         return redirect(url_for('login'))
 
     return render_template('reset_password.html', form=form)
+
+@app.before_request
+def before_request():
+    g.locale = str(get_locale())
