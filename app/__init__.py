@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -11,21 +11,40 @@ from logging import Formatter, ERROR, INFO
 from logging.handlers import SMTPHandler, RotatingFileHandler
 import os
 
-app = Flask(__name__)
-app.config.from_object(Config)
+db = SQLAlchemy()
+migrate = Migrate()
+login = LoginManager()
+login.login_view = 'auth.login'
+login.login_message = 'Please log in to access this page.'
+mail = Mail()
+bootstrap = Bootstrap()
+moment = Moment()
+babel = Babel()
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-login = LoginManager(app)
-login.login_view = 'login'
-mail = Mail(app)
-bootstrap = Bootstrap(app)
-moment = Moment(app)
-babel = Babel(app)
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
 
-if not app.debug:
-    if app.config['MAIL_SERVER']:
-        auth = None
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login.init_app(app)
+    mail.init_app(app)
+    bootstrap.init_app(app)
+    moment.init_app(app)
+    babel.init_app(app)
+
+    from app.errors import bp as errors_bp
+    app.register_blueprint(errors_bp)
+
+    from app.auth import bp as auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+
+    from app.main import bp as main_bp
+    app.register_blueprint(main_bp)
+
+    if not app.debug and not app.testing:
+        if app.config['MAIL_SERVER']:
+            auth = None
         if app.config['MAIL_USERNAME'] or app.config['MAIL_PASSWORD']:
             auth = (app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
         
@@ -52,8 +71,10 @@ if not app.debug:
             app.logger.setLevel(INFO)
             app.logger.info('Microblog startup')
 
+    return app
+
 @babel.localeselector
 def get_locale():
-    return request.accept_languages.best_match(app.config['LANGUAGES'])
+    return request.accept_languages.best_match(current_app.config['LANGUAGES'])
 
-from app import routes, models, errors
+from app import models
