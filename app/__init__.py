@@ -7,7 +7,7 @@ from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_babel import Babel
 from config import Config
-from logging import Formatter, ERROR, INFO
+from logging import StreamHandler, Formatter, ERROR, INFO
 from logging.handlers import SMTPHandler, RotatingFileHandler
 import os
 
@@ -61,15 +61,23 @@ def create_app(config_class=Config):
         mail_handler.setLevel(ERROR)
         app.logger.addHandler(mail_handler)
 
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-            file_handler = RotatingFileHandler('logs/microblog.log', maxBytes=10240, backupCount=10)
-            file_handler.setFormatter(Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'))
+        if app.config['LOG_TO_STDOUT']:
+            stream_handler = StreamHandler()
+            stream_handler.setLevel(INFO)
+            app.logger.addHandler(stream_handler)
+        else:
+            if not os.path.exists('logs'):
+                os.mkdir('logs')
+            file_handler = RotatingFileHandler('logs/microblog.log',
+                                               maxBytes=10240, backupCount=10)
+            file_handler.setFormatter(Formatter(
+                '%(asctime)s %(levelname)s: %(message)s '
+                '[in %(pathname)s:%(lineno)d]'))
             file_handler.setLevel(INFO)
             app.logger.addHandler(file_handler)
 
-            app.logger.setLevel(INFO)
-            app.logger.info('Microblog startup')
+        app.logger.setLevel(INFO)
+        app.logger.info('Microblog startup')
 
     return app
 
