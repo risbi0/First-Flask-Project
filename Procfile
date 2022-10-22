@@ -1,1 +1,1 @@
-web: flask db upgrade; waitress-serve main:app
+web: flask db upgrade; gunicorn --bind 0.0.0.0:$PORT main:app
